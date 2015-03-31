@@ -1,0 +1,159 @@
+#!/usr/bin/env ruby
+$: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
+
+require 'gli'
+require 'highline/import'
+require 'apprunner'
+require 'json'
+require 'bcrypt'
+require 'rubyutils'
+require 'helpers/github'
+
+
+include GLI::App
+
+
+def initialize_environment(global)
+  debug_mode = global[:debug_mode] || 'INFO'
+  #set some global variables for use
+  $app_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+  $logger = RubyUtils::Logging.new({ :log_level => debug_mode, :format => 'pretty'}).logger
+  $app_dir = "#{$app_root}/apps"
+  begin
+    require 'win32console' if RUBY_PLATFORM =~ /win32|mswin|mingw|cygwin/
+  rescue LoadError
+    raise 'You must gem install win32console to use color on Windows'
+  end 
+end
+
+
+def app_manager(global_options, options, args)
+  Apprunner::AppManager.new({
+    :log_level => global_options[:debug_mode]
+  })
+end
+
+
+
+program_desc 'Describe your application here'
+
+version Apprunner::Constants::VERSION
+default_command :config
+subcommand_option_handling :normal
+arguments :strict
+
+desc 'Sets the default debugging options [debug,info,warn,error,fatal]'
+default_value 'info'
+flag [:d,:debug_mode]
+
+
+desc 'list managed applications'
+arg_name 'app_name'
+command :list do |c|
+  c.desc 'list all dependencies for app(s)'
+  c.switch [:d, :dependencies]
+  c.action do |global_options,options,args|
+      app_manager(global_options, options, args)
+  end
+end
+
+desc 'add an application to manage'
+arg_name 'app_name'
+command :add do |c|
+  c.action do |global_options,options,args|
+      
+  end
+end
+
+
+desc 'Describe install here'
+arg_name 'Describe arguments to install here'
+command :install do |c|
+  c.action do |global_options,options,args|
+    puts "install command ran"
+  end
+end
+
+desc 'Configure application settings and defaults'
+command :config do |c|
+  c.action do |global_options,options,args|
+    c.desc 'list configured settings'
+    c.switch [:l, :list]
+    config_file = "#{$app_root}/.config"
+    $logger.debug "configuring application::: existing config::::#{File.exist?(config_file)}"
+    if(!File.exist?(config_file))
+      $logger.debug "logging into github:::"
+      begin
+        _github = prompt_and_authenticate_user
+        $logger.debug "saving settings to encrypted config file"
+        File.open("#{$app_root}/.config", 'w') { |file| 
+          file.write(JSON.pretty_generate(_github[:data])) 
+        }
+      rescue Exception => e
+         $logger.error "unable to log into github with credentials"
+         $logger.error e.to_s
+      end
+    end
+
+  end
+end
+
+
+desc 'Describe dep here'
+arg_name 'Describe arguments to dep here'
+command :dep do |c|
+  c.action do |global_options,options,args|
+    puts "dep command ran"
+  end
+end
+
+desc 'Describe start here'
+arg_name 'Describe arguments to start here'
+command :start do |c|
+  c.action do |global_options,options,args|
+    puts "start command ran"
+  end
+end
+
+desc 'Describe stop here'
+arg_name 'Describe arguments to stop here'
+command :stop do |c|
+  c.action do |global_options,options,args|
+    puts "stop command ran"
+  end
+end
+
+desc 'Describe restart here'
+arg_name 'Describe arguments to restart here'
+command :restart do |c|
+  c.action do |global_options,options,args|
+    puts "restart command ran"
+  end
+end
+
+desc 'Describe load here'
+arg_name 'Describe arguments to load here'
+command :load do |c|
+  c.action do |global_options,options,args|
+    puts "load command ran"
+  end
+end
+
+pre do |global,command,options,args|
+  initialize_environment(global)
+  true
+end
+
+post do |global,command,options,args|
+  # Post logic here
+  # Use skips_post before a command to skip this
+  # block on that command only
+end
+
+on_error do |exception|
+  # Error logic here
+  # return false to skip default error handling
+  true
+end
+
+exit run(ARGV)
